@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الدردشة العامة</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            background: url('https://i.pinimg.com/originals/e4/fa/06/e4fa061200efe8e8b35955892e984e60.gif') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+        }
+        #chat-container {
+            flex: 1;
+            padding: 10px;
+            overflow-y: scroll;
+            border-bottom: 2px solid #444;
+            background-color: rgba(0, 0, 0, 0.5); /* شفاف جزئياً */
+            color: white;
+        }
+        #message-input {
+            padding: 10px;
+            background-color: #333;
+            border: none;
+            color: white;
+            width: 100%;
+        }
+        #send-button {
+            padding: 10px;
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        #input-container {
+            display: flex;
+            margin-bottom: 40px; /* رفع الشريط للأعلى */
+            padding: 0 10px; /* إضافة بعض الهوامش الجانبية */
+        }
+        .message {
+            margin-bottom: 10px;
+        }
+        .username {
+            font-weight: bold;
+        }
+        #online-users {
+            padding: 10px;
+            border-top: 2px solid #444;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        #online-users ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #online-users li {
+            padding: 5px 0;
+            cursor: pointer;
+            position: relative;
+        }
+        #online-users li:hover {
+            background-color: #555;
+        }
+        .notification {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background-color: red;
+            border-radius: 50%;
+        }
+        #chat-modal {
+            display: none;
+            position: fixed;
+            bottom: 10%;
+            right: 10%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            z-index: 1000;
+        }
+        #chat-modal input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        #chat-modal button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #chat-modal button:hover {
+            background-color: #45a049;
+        }
+        #close-modal {
+            background-color: #f44336;
+        }
+        #close-modal:hover {
+            background-color: #e53935;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container"></div>
+    <div id="input-container">
+        <input id="message-input" type="text" placeholder="اكتب رسالتك هنا...">
+        <button id="send-button">إرسال</button>
+    </div>
+    <div id="online-users">
+        <h2>المتواجدون أونلاين</h2>
+        <ul id="online-users-list"></ul>
+    </div>
+
+    <!-- Modal for private chat -->
+    <div id="chat-modal">
+        <h2>الدردشة الخاصة مع <span id="chat-with"></span></h2>
+        <div id="private-chat-container"></div>
+        <input id="private-message-input" type="text" placeholder="اكتب رسالتك هنا...">
+        <button id="send-private-button">إرسال</button>
+        <button id="close-modal" type="button">إغلاق</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+        import { getDatabase, ref, onChildAdded, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAt22aeBSz65U8iuxkyk1fW8-2CmQIh9Og",
+            authDomain: "space-chat-cbf20.firebaseapp.com",
+            databaseURL: "https://space-chat-cbf20-default-rtdb.firebaseio.com",
+            projectId: "space-chat-cbf20",
+            storageBucket: "space-chat-cbf20.appspot.com",
+            messagingSenderId: "87313843352",
+            appId: "1:87313843352:web:93e61898efefe44b257ced",
+            measurementId: "G-6Z2BKKZZM8"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const onlineUsersList = document.getElementById('online-users-list');
+        const chatModal = document.getElementById('chat-modal');
+        const chatWithElement = document.getElementById('chat-with');
+        const privateChatContainer = document.getElementById('private-chat-container');
+        const privateMessageInput = document.getElementById('private-message-input');
+        const sendPrivateButton = document.getElementById('send-private-button');
+        const closeModalButton = document.getElementById('close-modal');
+
+        const messagesRef = ref(database, 'messages');
+        const onlineUsersRef = ref(database, 'onlineUsers');
+        const privateChatsRef = ref(database, 'privateChats');
+        const unreadMessagesRef = ref(database, 'unreadMessages');
+
+        const username = localStorage.getItem('username') || 'مستخدم';
+        const userColor = localStorage.getItem('userColor') || '#FFFFFF';
+
+        function updateOnlineUsersList() {
+            onValue(onlineUsersRef, (snapshot) => {
+                const onlineUsers = snapshot.val();
+                onlineUsersList.innerHTML = '';
+                for (const user in onlineUsers) {
+                    if (user !== username) { // Do not list the current user
+                        const listItem = document.createElement('li');
+                        listItem.textContent = user;
+                        const notification = document.createElement('span');
+                        notification.classList.add('notification');
+                        listItem.appendChild(notification);
+                        listItem.addEventListener('click', () => openPrivateChat(user));
+                        onlineUsersList.appendChild(listItem);
+
+                        // Check for unread messages
+                        const userUnreadRef = ref(database, `unreadMessages/${user}/${username}`);
+                        onValue(userUnreadRef, (snapshot) => {
+                            if (snapshot.exists()) {
+                                notification.style.display = 'block';
+                            } else {
+                                notification.style.display = 'none';
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        function openPrivateChat(user) {
+            chatWithElement.textContent = user;
+            chatModal.style.display = 'block';
+            const userChatRef = ref(database, `privateChats/${username}/${user}`);
+            onChildAdded(userChatRef, (snapshot) => {
+                const messageData = snapshot.val();
+                const messageElement = document.createElement('p');
+                messageElement.innerHTML = `<span class="username" style="color: ${messageData.color}">${messageData.user}:</span> ${messageData.text}`;
+                privateChatContainer.appendChild(messageElement);
+                privateChatContainer.scrollTop = privateChatContainer.scrollHeight;
+            });
+            // Clear unread messages for this user
+            set(ref(database, `unreadMessages/${user}/${username}`), null);
+        }
+
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                push(messagesRef, { text: message, user: username, color: userColor });
+                messageInput.value = '';
+            }
+        });
+
+        sendPrivateButton.addEventListener('click', () => {
+            const message = privateMessageInput.value.trim();
+            const chatWith = chat
+            </script></body></html>

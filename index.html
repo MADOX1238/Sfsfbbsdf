@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: url('https://i.pinimg.com/originals/e4/fa/06/e4fa061200efe8e8b35955892e984e60.gif') no-repeat center center fixed;
+            background-size: cover;
+        }
+        .login-container {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            text-align: center;
+            color: white;
+        }
+        .login-container h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .login-container input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .login-container button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .login-container button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>تسجيل الدخول</h1>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="ادخل اسمك" required>
+            <button type="submit">دخول</button>
+        </form>
+    </div>
+
+    <script>
+        // Function to generate a random color
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        document.getElementById('login-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            if (username) {
+                localStorage.setItem('username', username);
+                localStorage.setItem('userColor', getRandomColor());
+                window.location.href = 'chat.html';
+            }
+        });
+    </script>
+
+</body></html>
